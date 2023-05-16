@@ -13,7 +13,7 @@ inputs:
     required: false
   dockerfile:
     required: false
-  allow-vulnerabilites:
+  allow-vulnerabilities:
     required: false
     default: false
 
