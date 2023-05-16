@@ -55,7 +55,7 @@ runs:
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
     - name: Check CVEs
-      continue-on-error: ${{ inputs.allow-vulnerabilites }}
+      continue-on-error: ${{ inputs.allow-vulnerabilities }}
       uses: enosix/github-action-docker-scout@v1.0
       with:
         image: ${{ inputs.image }}:${{ steps.image.outputs.version }}
