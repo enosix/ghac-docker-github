@@ -68,6 +68,6 @@ runs:
         registry_user: ${{ github.actor }}
         registry_password: ${{ inputs.github_token }}
     - name: Log vulnerability errors
-      if: inputs.allow-vulnerabilities == 'true' && steps.cves.outcome == "failure"
+      if: inputs.allow-vulnerabilities == 'true' && steps.cves.outcome == 'failure'
       shell: bash
       run: echo "Vulnerabilites detected, please check the logs" >> $GITHUB_STEP_SUMMARY
