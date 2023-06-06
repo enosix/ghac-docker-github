@@ -55,6 +55,7 @@ runs:
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
     - name: Check CVEs
+      id: cves
       continue-on-error: ${{ inputs.allow-vulnerabilities == 'true' }}
       uses: enosix/github-action-docker-scout@v1.0
       with:
@@ -66,3 +67,7 @@ runs:
         # Optional registry authentication when pulling private images
         registry_user: ${{ github.actor }}
         registry_password: ${{ inputs.github_token }}
+    - name: Log vulnerability errors
+      if: inputs.allow-vulnerabilities == 'true' && steps.cves.outcome == "failure"
+      shell: bash
+      run: echo "Vulnerabilites detected, please check the logs" >> $GITHUB_STEP_SUMMARY
