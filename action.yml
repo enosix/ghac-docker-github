@@ -13,6 +13,8 @@ inputs:
     required: false
   dockerfile:
     required: false
+  version:
+    required: false
   allow-vulnerabilities:
     required: false
     default: false
@@ -32,8 +34,9 @@ runs:
         images: ${{ inputs.image }}
         flavor: latest=true
         tags: |
-          type=ref,event=branch
-          type=ref,event=pr
+          type=raw,value=${{ inputs.version }},enable=${{ (inputs.version && 'true') || 'false' }}
+          type=ref,event=branch,enable=${{ (inputs.version && 'false') || 'true' }}
+          type=ref,event=pr,enable=${{ (inputs.version && 'false') || 'true' }}
           type=semver,pattern={{version}}
           type=semver,pattern={{major}}.{{minor}}
     - name: Get Image
