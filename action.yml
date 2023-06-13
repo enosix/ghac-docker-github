@@ -78,6 +78,7 @@ runs:
       run: |
         echo "${{ steps.cves.outputs.summary }}" >> $GITHUB_STEP_SUMMARY
         echo "Vulnerabilites detected, please check the logs" >> $GITHUB_STEP_SUMMARY
+        echo "${{ steps.cves.outputs.results }}"
     - name: Send notification to slack
       if: steps.cves.outcome == 'failure'
       uses: slackapi/slack-github-action@v1.24.0
