@@ -63,10 +63,9 @@ runs:
     - name: Check CVEs
       id: cves
       continue-on-error: ${{ inputs.allow-vulnerabilities == 'true' }}
-      uses: enosix/github-action-docker-scout@v1.0
+      uses: enosix/github-action-docker-scout@v1.1
       with:
         image: ${{ inputs.image }}:${{ steps.image.outputs.version }}
-        args: '-e --only-fixed'
         # Authenticate with Docker Hub
         user: ${{ inputs.dockerhub_user }}
         password: ${{ inputs.dockerhub_password }}
@@ -76,4 +75,28 @@ runs:
     - name: Log vulnerability errors
       if: inputs.allow-vulnerabilities == 'true' && steps.cves.outcome == 'failure'
       shell: bash
-      run: echo "Vulnerabilites detected, please check the logs" >> $GITHUB_STEP_SUMMARY
+      run: |
+        echo "${{ steps.cves.outputs.summary }}" >> $GITHUB_STEP_SUMMARY
+        echo "Vulnerabilites detected, please check the logs" >> $GITHUB_STEP_SUMMARY
+    - name: Send notification to slack
+      if: steps.cves.outcome == 'failure'
+      uses: slackapi/slack-github-action@v1.24.0
+      with:
+        # This data can be any valid JSON from a previous step in the GitHub Action
+        payload: |
+          {
+            "channel": "platform-automated"
+            "username": "Github Actions"
+            "icon_url": "https://avatars.githubusercontent.com/u/9919?s=200&v=4"
+            "attachments": {
+              "fallback": "${{ github.repository }} ${{ github.ref_name }} Failed the CVE check - please view the job for details."
+              "color": "danger"
+              "fields": {
+                "title": "{{ github.repository }} ${{ github.ref_name }} has vulnerabilities"
+                "title_link": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                "value": "${{ steps.cves.outputs.summary }}"
+              }
+            }
+          }
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
