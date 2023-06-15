@@ -20,6 +20,8 @@ inputs:
   allow-vulnerabilities:
     required: false
     default: false
+  slack-webhook-url:
+    require: true
 
 outputs:
   version:
@@ -100,4 +102,4 @@ runs:
             }
           }
       env:
-        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        SLACK_WEBHOOK_URL: ${{ inputs.slack-webhook-url }}
