@@ -17,10 +17,10 @@ inputs:
     required: false
   version:
     required: false
-  allow-vulnerabilities:
+  allow_vulnerabilities:
     required: false
     default: false
-  slack-webhook-url:
+  slack_webhook_url:
     require: true
 
 outputs:
@@ -64,7 +64,7 @@ runs:
         labels: ${{ steps.meta.outputs.labels }}
     - name: Check CVEs
       id: cves
-      continue-on-error: ${{ inputs.allow-vulnerabilities == 'true' }}
+      continue-on-error: ${{ inputs.allow_vulnerabilities == 'true' }}
       uses: enosix/github-action-docker-scout@v1.1
       with:
         image: ${{ inputs.image }}:${{ steps.image.outputs.version }}
@@ -75,7 +75,7 @@ runs:
         registry_user: ${{ github.actor }}
         registry_password: ${{ inputs.github_token }}
     - name: Log vulnerability errors
-      if: inputs.allow-vulnerabilities == 'true' && steps.cves.outcome == 'failure'
+      if: inputs.allow_vulnerabilities == 'true' && steps.cves.outcome == 'failure'
       shell: bash
       run: |
         echo "${{ steps.cves.outputs.summary }}" >> $GITHUB_STEP_SUMMARY
@@ -102,4 +102,4 @@ runs:
             }
           }
       env:
-        SLACK_WEBHOOK_URL: ${{ inputs.slack-webhook-url }}
+        SLACK_WEBHOOK_URL: ${{ inputs.slack_webhook_url }}
