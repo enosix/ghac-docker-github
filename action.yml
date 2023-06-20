@@ -97,7 +97,7 @@ runs:
               "fields": {
                 "title": "{{ github.repository }} ${{ github.ref_name }} has vulnerabilities"
                 "title_link": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-                "value": "${{ steps.cves.outputs.summary }}"
+                "value": ${{ toJson(steps.cves.outputs.summary) }}
               }
             }
           }
