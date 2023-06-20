@@ -91,15 +91,16 @@ runs:
             "channel": "platform-automated"
             "username": "Github Actions"
             "icon_url": "https://avatars.githubusercontent.com/u/9919?s=200&v=4"
-            "attachments": {
+            "attachments": [{
               "fallback": "${{ github.repository }} ${{ github.ref_name }} Failed the CVE check - please view the job for details."
               "color": "danger"
-              "fields": {
-                "title": "{{ github.repository }} ${{ github.ref_name }} has vulnerabilities"
+              "fields": [{
+                "title": "${{ github.repository }} ${{ github.ref_name }} has vulnerabilities"
                 "title_link": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
                 "value": ${{ toJson(steps.cves.outputs.summary) }}
-              }
-            }
+              }]
+            }]
           }
       env:
         SLACK_WEBHOOK_URL: ${{ inputs.slack_webhook_url }}
+        SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
