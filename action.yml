@@ -11,7 +11,7 @@ inputs:
     required: true
   context:
     required: false
-  build-args:
+  build_args:
     required: false
   dockerfile:
     required: false
