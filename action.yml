@@ -1,20 +1,34 @@
-name: 'Docker Push to Github'
+name: 'Docker Push'
 description: 'Build and push an image to ghcr'
 inputs:
   github_token:
-    required: true
+    description: 'GitHub Token'
+    required: false
   dockerhub_user:
+    description: 'DockerHub Username'
     required: true
   dockerhub_password:
+    description: 'DockerHub Password'
     required: true
   image:
+    description: 'Image Name'
     required: true
   context:
+    description: 'Build Context'
     required: false
   build_args:
     required: false
   dockerfile:
+    description: 'Dockerfile'
     required: false
+  tag_latest:
+    description: 'Tag Latest'
+    required: false
+    default: auto
+  registry:
+    description: 'Registry'
+    required: false
+    default: github # or docker
   version:
     required: false
   allow_vulnerabilities:
@@ -31,29 +45,29 @@ outputs:
 runs:
   using: "composite"
   steps:
-    - name: Tag Docker Image
+    - name: Generate Docker Tags
       id: meta
       uses: docker/metadata-action@v4
       with:
         images: ${{ inputs.image }}
-        flavor: latest=true
+        flavor: latest=${{ inputs.tag_latest }}
         tags: |
           type=raw,value=${{ inputs.version }},enable=${{ (inputs.version && 'true') || 'false' }}
-          type=ref,event=branch,enable=${{ (inputs.version && 'false') || 'true' }}
+          type=edge,enable=${{ (inputs.version && 'false') || 'true' }}
           type=ref,event=pr,enable=${{ (inputs.version && 'false') || 'true' }}
           type=semver,pattern={{version}}
           type=semver,pattern={{major}}.{{minor}}
-    - name: Get Image
+    - name: Output Image Version
       id: image
       shell: bash
       run: echo "version=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}" >> $GITHUB_OUTPUT
-    - name: Login to GitHub Container Registry
-      uses: docker/login-action@v2
+    - name: Login to Container Registry
+      uses: docker/login-action@v3
       with:
-        registry: ghcr.io
-        username: ${{ github.actor }}
-        password: ${{ inputs.github_token }}
-    - name: Build and push to GitHub Container Registry
+        registry: ${{ inputs.registry == 'docker' && '' || 'ghcr.io' }}
+        username: ${{ inputs.registry == 'docker' && inputs.dockerhub_user || github.actor }}
+        password: ${{ inputs.registry == 'docker' && inputs.dockerhub_password || inputs.github_token }}
+    - name: Build and push to ${{ inputs.registry == 'docker' && 'DockerHub' || 'GitHub Container Registry' }}
       uses: docker/build-push-action@v4
       with:
         push: true
@@ -72,8 +86,8 @@ runs:
         user: ${{ inputs.dockerhub_user }}
         password: ${{ inputs.dockerhub_password }}
         # Optional registry authentication when pulling private images
-        registry_user: ${{ github.actor }}
-        registry_password: ${{ inputs.github_token }}
+        registry_user: ${{ inputs.registry == 'docker' && inputs.dockerhub_user || github.actor }}
+        registry_password: ${{ inputs.registry == 'docker' && inputs.dockerhub_password || inputs.github_token }}
     - name: Log vulnerability errors
       if: inputs.allow_vulnerabilities == 'true' && steps.cves.outcome == 'failure'
       shell: bash
