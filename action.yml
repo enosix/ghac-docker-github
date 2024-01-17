@@ -17,6 +17,7 @@ inputs:
     description: 'Build Context'
     required: false
   build_args:
+    description: 'Build Args'
     required: false
   dockerfile:
     description: 'Dockerfile'
@@ -30,11 +31,13 @@ inputs:
     required: false
     default: github # or docker
   version:
+    description: 'Version'
     required: false
   allow_vulnerabilities:
     required: false
     default: false
   slack_webhook_url:
+    description: 'Slack Webhook URL'
     require: true
 
 outputs:
@@ -76,42 +79,41 @@ runs:
         file: ${{ inputs.dockerfile }}
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
+
     - name: Check CVEs
       id: cves
+      uses: docker/scout-action@v1
       continue-on-error: ${{ inputs.allow_vulnerabilities == 'true' }}
-      uses: enosix/github-action-docker-scout@v1.1
       with:
-        image: ${{ inputs.image }}:${{ steps.image.outputs.version }}
-        # Authenticate with Docker Hub
-        user: ${{ inputs.dockerhub_user }}
-        password: ${{ inputs.dockerhub_password }}
-        # Optional registry authentication when pulling private images
-        registry_user: ${{ inputs.registry == 'docker' && inputs.dockerhub_user || github.actor }}
-        registry_password: ${{ inputs.registry == 'docker' && inputs.dockerhub_password || inputs.github_token }}
-    - name: Log vulnerability errors
-      if: inputs.allow_vulnerabilities == 'true' && steps.cves.outcome == 'failure'
-      shell: bash
-      run: |
-        echo "${{ steps.cves.outputs.summary }}" >> $GITHUB_STEP_SUMMARY
-        echo "Vulnerabilites detected, please check the logs" >> $GITHUB_STEP_SUMMARY
-        echo "${{ steps.cves.outputs.results }}"
+        command: cves,recommendations,compare
+        image: ${{ inputs.image }}
+        dockerhub-user: ${{ inputs.dockerhub_user }}
+        dockerhub-password: ${{ inputs.dockerhub_password }}
+        registry-user: ${{ inputs.registry == 'docker' && inputs.dockerhub_user || github.actor }}
+        registry-password: ${{ inputs.registry == 'docker' && inputs.dockerhub_password || inputs.github_token }}
+        to-latest: true
+        ignore-base: true
+        ignore-unchanged: true
+        only-fixed: true
+        write-comment: ${{ github.event_name == 'pull_request' }}
+        github-token: ${{ inputs.github_token }}
+        exit-code: ${{ inputs.allow_vulnerabilities != 'true' }}
     - name: Send notification to slack
-      if: steps.cves.outcome == 'failure'
+      if: failure()
       uses: slackapi/slack-github-action@v1.24.0
       with:
-        # This data can be any valid JSON from a previous step in the GitHub Action
         payload: |
           {
             "channel": "platform-automated",
             "username": "Github Actions",
             "icon_url": "https://avatars.githubusercontent.com/u/9919?s=200&v=4",
             "attachments": {
-              "fallback": "${{ github.repository }} ${{ github.ref_name }} Failed the CVE check - please view the job for details.",
+              "fallback": "${{ github.repository }} ${{ github.ref_name }} Failed the CVE check",
               "color": "danger",
               "fields": {
                 "title": "${{ github.repository }} ${{ github.ref_name }} has vulnerabilities",
                 "title_link": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}",
-                "value": ${{ toJson(steps.cves.outputs.summary) }}
+                "value": "Please check the action logs for more details."
               }
             }
           }
