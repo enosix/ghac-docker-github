@@ -85,7 +85,7 @@ runs:
       uses: docker/scout-action@v1
       continue-on-error: ${{ inputs.allow_vulnerabilities == 'true' }}
       with:
-        command: cves,recommendations,compare
+        command: cves,recommendations
         image: ${{ steps.meta.outputs.tags }}
         dockerhub-user: ${{ inputs.dockerhub_user }}
         dockerhub-password: ${{ inputs.dockerhub_password }}
