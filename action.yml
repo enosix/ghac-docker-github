@@ -86,7 +86,7 @@ runs:
       continue-on-error: ${{ inputs.allow_vulnerabilities == 'true' }}
       with:
         command: cves,recommendations,compare
-        image: ${{ inputs.image }}:${{ steps.image.outputs.version }}
+        image: ${{ steps.meta.outputs.tags }}
         dockerhub-user: ${{ inputs.dockerhub_user }}
         dockerhub-password: ${{ inputs.dockerhub_password }}
         registry-user: ${{ inputs.registry == 'docker' && inputs.dockerhub_user || github.actor }}
