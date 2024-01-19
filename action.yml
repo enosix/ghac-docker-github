@@ -79,6 +79,7 @@ runs:
         file: ${{ inputs.dockerfile }}
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
+        load: true
 
     - name: Check CVEs
       id: cves
