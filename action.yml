@@ -60,10 +60,16 @@ runs:
           type=ref,event=pr,enable=${{ (inputs.version && 'false') || 'true' }}
           type=semver,pattern={{version}}
           type=semver,pattern={{major}}.{{minor}}
-    - name: Output Image Version
+    - name: Configuration
       id: image
       shell: bash
-      run: echo "version=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}" >> $GITHUB_OUTPUT
+      run: |
+        if [[ ! -d "/tmp/docker-scout" ]]; then
+          mkdir -p /opt/docker-scout
+          ln -s /opt/docker-scout /tmp/docker-scout
+        fi
+        
+        echo "version=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}" >> $GITHUB_OUTPUT
     - name: Login to Container Registry
       uses: docker/login-action@v3
       with:
@@ -81,7 +87,7 @@ runs:
         labels: ${{ steps.meta.outputs.labels }}
     - name: Check CVEs
       id: cves
-      uses: docker/scout-action@b7413c99043c2a9131c0fa39cedaece80f285788
+      uses: docker/scout-action@v1
       continue-on-error: ${{ inputs.allow_vulnerabilities == 'true' }}
       with:
         debug: true
