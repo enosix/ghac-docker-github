@@ -79,18 +79,9 @@ runs:
         file: ${{ inputs.dockerfile }}
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
-    - name: Local push
-      uses: docker/build-push-action@v5
-      with:
-        load: true
-        context: ${{ inputs.context }}
-        build-args: ${{ inputs.build-args }}
-        file: ${{ inputs.dockerfile }}
-        tags: ${{ steps.meta.outputs.tags }}
-        labels: ${{ steps.meta.outputs.labels }}
     - name: Check CVEs
       id: cves
-      uses: docker/scout-action@v1
+      uses: docker/scout-action@b7413c99043c2a9131c0fa39cedaece80f285788
       continue-on-error: ${{ inputs.allow_vulnerabilities == 'true' }}
       with:
         debug: true
