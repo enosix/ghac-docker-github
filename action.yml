@@ -76,7 +76,7 @@ runs:
       with:
         push: true
         context: ${{ inputs.context }}
-        build-args: ${{ inputs.build-args }}
+        build-args: ${{ inputs.build_args }}
         file: ${{ inputs.dockerfile }}
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
