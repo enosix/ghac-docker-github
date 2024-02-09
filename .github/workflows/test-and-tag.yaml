@@ -13,16 +13,24 @@ on:
 
 permissions:
   contents: write
-  packages: read
+  packages: write
 
 jobs:
   test-and-tag:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-#        - name: Test Action
-#          uses: ./
-#          with:
+      - name: Test Action
+        uses: enosix/ghac-docker-github@stable
+        with:
+          allow_vulnerabilities: true
+          version: testing
+          build-args: |
+          image: ghcr.io/enosix/ghac-docker-github/testing #TODO: maybe make this test image build something useful?
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          dockerhub_user: ${{ vars.DOCKERHUB_USERNAME }}
+          dockerhub_password: ${{ secrets.DOCKERHUB_ACCESS_TOKEN }}
+          dockerfile: './test/Dockerfile'
       - name: Create tag
         uses: actions/github-script@v7
         with:

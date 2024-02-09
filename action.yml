@@ -1,5 +1,5 @@
 name: 'Docker Push'
-description: 'Build and push an image to ghcr'
+description: 'Build and push a docker image'
 inputs:
   github_token:
     description: 'GitHub Token'
@@ -34,11 +34,12 @@ inputs:
     description: 'Version'
     required: false
   allow_vulnerabilities:
+    description: 'Allow Vulnerabilities'
     required: false
-    default: false
+    default: 'false'
   slack_webhook_url:
     description: 'Slack Webhook URL'
-    require: true
+    required: false
 
 outputs:
   version:
@@ -101,7 +102,7 @@ runs:
         github-token: ${{ inputs.github_token }}
         exit-code: ${{ inputs.allow_vulnerabilities != 'true' }}
     - name: Send notification to slack
-      if: failure()
+      if: ${{ failure() && inputs.slack_webhook_url != '' }}
       uses: slackapi/slack-github-action@v1.24.0
       with:
         payload: |
