@@ -19,6 +19,13 @@ jobs:
   test-and-tag:
     runs-on: ubuntu-latest
     steps:
+      - name: Get Secrets
+        uses: bitwarden/sm-action@v2
+        with:
+          access_token: ${{ secrets.BW_ACCESS_TOKEN }}
+          secrets: |
+            d0a9af63-dea5-476f-b35a-b18501152d9a > DOCKERHUB_USERNAME
+            bf06dbe4-5b30-4020-b39e-b18501151ace > DOCKERHUB_ACCESS_TOKEN
       - uses: actions/checkout@v4
       - name: Test Action
         uses: enosix/ghac-docker-github@stable
@@ -28,8 +35,8 @@ jobs:
           build-args: |
           image: ghcr.io/enosix/ghac-docker-github/testing #TODO: maybe make this test image build something useful?
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          dockerhub_user: ${{ vars.DOCKERHUB_USERNAME }}
-          dockerhub_password: ${{ secrets.DOCKERHUB_ACCESS_TOKEN }}
+          dockerhub_user: ${{ env.DOCKERHUB_USERNAME }}
+          dockerhub_password: ${{ env.DOCKERHUB_ACCESS_TOKEN }}
           dockerfile: './test/Dockerfile'
       - name: Create tag
         uses: actions/github-script@v7
