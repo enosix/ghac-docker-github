@@ -51,7 +51,7 @@ runs:
   steps:
     - name: Generate Docker Tags
       id: meta
-      uses: docker/metadata-action@v4
+      uses: docker/metadata-action@v5
       with:
         images: ${{ inputs.image }}
         flavor: latest=${{ inputs.tag_latest }}
@@ -73,7 +73,7 @@ runs:
         username: ${{ inputs.registry == 'docker' && inputs.dockerhub_user || github.actor }}
         password: ${{ inputs.registry == 'docker' && inputs.dockerhub_password || inputs.github_token }}
     - name: Build and push to ${{ inputs.registry == 'docker' && 'DockerHub' || 'GitHub Container Registry' }}
-      uses: docker/build-push-action@v5
+      uses: docker/build-push-action@v6
       with:
         push: true
         context: ${{ inputs.context }}
