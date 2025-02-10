@@ -40,6 +40,11 @@ inputs:
   slack_webhook_url:
     description: 'Slack Webhook URL'
     required: false
+  use_cached:
+    description: 'The cached image to use, if the sha exists'
+    required: false
+    default: ''
+  
 
 outputs:
   version:
@@ -56,25 +61,53 @@ runs:
         images: ${{ inputs.image }}
         flavor: latest=${{ inputs.tag_latest }}
         tags: |
+          type=sha,event=branch,enable=${{ (inputs.registry == 'github' && 'true') || 'false' }}
           type=raw,value=${{ inputs.version }},enable=${{ (inputs.version && 'true') || 'false' }}
           type=edge,enable=${{ (inputs.version && 'false') || 'true' }}
           type=ref,event=pr,enable=${{ (inputs.version && 'false') || 'true' }}
           type=semver,pattern={{version}}
           type=semver,pattern={{major}}.{{minor}}
-          type=sha,event=branch
     - name: Configuration
       id: image
       shell: bash
       run: |
         echo "version=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}" >> $GITHUB_OUTPUT
-    - name: Login to Container Registry
+    - name: Login to Github Registry
       uses: docker/login-action@v3
       with:
-        registry: ${{ inputs.registry == 'docker' && '' || 'ghcr.io' }}
-        username: ${{ inputs.registry == 'docker' && inputs.dockerhub_user || github.actor }}
-        password: ${{ inputs.registry == 'docker' && inputs.dockerhub_password || inputs.github_token }}
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ inputs.github_token }}
+    - name: Login to Docker Registry
+      uses: docker/login-action@v3
+      with:
+        username: ${{ inputs.dockerhub_user }}
+        password: ${{ inputs.dockerhub_password }}
+    - name: Check for cached version
+      if: inputs.use_cached
+      id: cache
+      shell: bash
+      env:
+        cached_image: "${{ inputs.use_cached }}:${{ github.sha }}"
+      run: |
+        tags=("${{ join(fromJSON(steps.meta.outputs.json).tags, '" "') }}")
+
+        if docker pull "$cached_image" >/dev/null 2>&1; then
+          echo "exists=true" >> $GITHUB_OUTPUT
+          echo "Image already exists in registry"
+          
+          for tag in "${tags[@]}"; do
+            docker tag $cached_image $tag
+            docker push $tag
+          done
+          
+        else
+          echo "exists=false" >> $GITHUB_OUTPUT
+          echo "Image not found in registry"
+        fi
     - name: Build and push to ${{ inputs.registry == 'docker' && 'DockerHub' || 'GitHub Container Registry' }}
       uses: docker/build-push-action@v6
+      if: (!inputs.use_cached) || steps.cache.outputs.exists == 'false'
       with:
         push: true
         context: ${{ inputs.context }}
