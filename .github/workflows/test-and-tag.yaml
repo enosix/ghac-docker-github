@@ -28,11 +28,12 @@ jobs:
             bf06dbe4-5b30-4020-b39e-b18501151ace > DOCKERHUB_ACCESS_TOKEN
       - uses: actions/checkout@v4
       - name: Test Action
-        uses: enosix/ghac-docker-github@stable
+        uses: ./
         with:
           allow_vulnerabilities: true
           version: testing
-          build-args: |
+          build_args: |
+            TEST=1
           image: ghcr.io/enosix/ghac-docker-github/testing #TODO: maybe make this test image build something useful?
           github_token: ${{ secrets.GITHUB_TOKEN }}
           dockerhub_user: ${{ env.DOCKERHUB_USERNAME }}
