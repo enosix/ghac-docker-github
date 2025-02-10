@@ -88,7 +88,7 @@ runs:
       id: cache
       shell: bash
       env:
-        cached_image: "${{ inputs.use_cached }}:${{ github.sha }}"
+        cached_image: "${{ inputs.use_cached }}:sha-${{ github.sha }}"
       run: |
         tags=("${{ join(fromJSON(steps.meta.outputs.json).tags, '" "') }}")
 
@@ -123,7 +123,7 @@ runs:
         debug: true
         verbose-debug: true
         command: cves,recommendations
-        image: ${{ steps.meta.outputs.tags }}
+        image: ${{ steps.meta.outputs.tags[0] }}
         dockerhub-user: ${{ inputs.dockerhub_user }}
         dockerhub-password: ${{ inputs.dockerhub_password }}
         registry-user: ${{ inputs.registry == 'docker' && inputs.dockerhub_user || github.actor }}
