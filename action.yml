@@ -88,9 +88,10 @@ runs:
       id: cache
       shell: bash
       env:
-        cached_image: "${{ inputs.use_cached }}:sha-${{ github.sha }}"
+        sha: ${{ gthub.sha }}
       run: |
         tags=("${{ join(fromJSON(steps.meta.outputs.json).tags, '" "') }}")
+        cached_image="${{ inputs.use_cached }}:sha-${sha:0:7}"
 
         if docker pull "$cached_image" >/dev/null 2>&1; then
           echo "exists=true" >> $GITHUB_OUTPUT
