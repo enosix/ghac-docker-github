@@ -88,7 +88,7 @@ runs:
       id: cache
       shell: bash
       env:
-        sha: ${{ gthub.sha }}
+        sha: ${{ github.sha }}
       run: |
         tags=("${{ join(fromJSON(steps.meta.outputs.json).tags, '" "') }}")
         cached_image="${{ inputs.use_cached }}:sha-${sha:0:7}"
