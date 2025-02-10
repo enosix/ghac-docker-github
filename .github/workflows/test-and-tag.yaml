@@ -39,6 +39,19 @@ jobs:
           dockerhub_user: ${{ env.DOCKERHUB_USERNAME }}
           dockerhub_password: ${{ env.DOCKERHUB_ACCESS_TOKEN }}
           dockerfile: './test/Dockerfile'
+      - name: Test Cached Action
+        uses: ./
+        with:
+          allow_vulnerabilities: true
+          version: testing2
+          build_args: |
+            TEST=1
+          image: ghcr.io/enosix/ghac-docker-github/testing
+          use_cached: ghcr.io/enosix/ghac-docker-github/testing
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          dockerhub_user: ${{ env.DOCKERHUB_USERNAME }}
+          dockerhub_password: ${{ env.DOCKERHUB_ACCESS_TOKEN }}
+          dockerfile: './test/Dockerfile'
       - name: Create tag
         uses: actions/github-script@v7
         with:
