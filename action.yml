@@ -19,6 +19,8 @@ inputs:
   build_args:
     description: 'Build Args'
     required: false
+  secrets:
+    description: 'Secrets (MY_SECRET=MY_ENV_VAR)'
   dockerfile:
     description: 'Dockerfile'
     required: false
@@ -113,6 +115,7 @@ runs:
         push: true
         context: ${{ inputs.context }}
         build-args: ${{ inputs.build_args }}
+        secret-envs: ${{ inputs.secrets }}
         file: ${{ inputs.dockerfile }}
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
