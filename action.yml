@@ -63,7 +63,6 @@ runs:
         images: ${{ inputs.image }}
         flavor: latest=${{ inputs.tag_latest }}
         tags: |
-          type=sha,event=branch,enable=${{ (inputs.registry == 'github' && 'true') || 'false' }}
           type=raw,value=${{ inputs.version }},enable=${{ (inputs.version && 'true') || 'false' }}
           type=edge,enable=${{ (inputs.version && 'false') || 'true' }}
           type=ref,event=pr,enable=${{ (inputs.version && 'false') || 'true' }}
