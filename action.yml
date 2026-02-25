@@ -94,7 +94,6 @@ runs:
       uses: docker/setup-buildx-action@v3
     - name: Build and push to ${{ inputs.registry == 'docker' && 'DockerHub' || 'GitHub Container Registry' }}
       uses: docker/build-push-action@v6
-      if: (!inputs.use_cached) || steps.cache.outputs.exists == 'false'
       with:
         push: true
         platforms: ${{ inputs.platforms }}
