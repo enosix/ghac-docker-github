@@ -32,6 +32,7 @@ jobs:
         with:
           allow_vulnerabilities: true
           version: testing
+          platform: linux/amd64,linux/arm64
           build_args: |
             TEST=1
           image: ghcr.io/enosix/ghac-docker-github/testing #TODO: maybe make this test image build something useful?
