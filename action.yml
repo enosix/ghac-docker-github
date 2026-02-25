@@ -88,29 +88,10 @@ runs:
       with:
         username: ${{ inputs.dockerhub_user }}
         password: ${{ inputs.dockerhub_password }}
-    - name: Check for cached version
-      if: inputs.use_cached
-      id: cache
-      shell: bash
-      env:
-        sha: ${{ github.sha }}
-      run: |
-        tags=("${{ join(fromJSON(steps.meta.outputs.json).tags, '" "') }}")
-        cached_image="${{ inputs.use_cached }}:sha-${sha:0:7}"
-
-        if docker pull "$cached_image" >/dev/null 2>&1; then
-          echo "exists=true" >> $GITHUB_OUTPUT
-          echo "Image already exists in registry"
-          
-          for tag in "${tags[@]}"; do
-            docker tag $cached_image $tag
-            docker push $tag
-          done
-          
-        else
-          echo "exists=false" >> $GITHUB_OUTPUT
-          echo "Image not found in registry"
-        fi
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v3
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
     - name: Build and push to ${{ inputs.registry == 'docker' && 'DockerHub' || 'GitHub Container Registry' }}
       uses: docker/build-push-action@v6
       if: (!inputs.use_cached) || steps.cache.outputs.exists == 'false'
@@ -123,6 +104,8 @@ runs:
         file: ${{ inputs.dockerfile }}
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
+        cache-from: ${{ inputs.use_cached && 'type=gha' || '' }}
+        cache-to: ${{ inputs.use_cached && 'type=gha,mode=max' || ''}}
     - name: Check CVEs
       id: cves
       uses: docker/scout-action@v1
