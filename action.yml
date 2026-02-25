@@ -28,6 +28,10 @@ inputs:
     description: 'Tag Latest'
     required: false
     default: auto
+  platforms:
+    description: 'The cpu architecture to build'
+    required: false
+    default: linux/amd64
   registry:
     description: 'Registry'
     required: false
@@ -112,6 +116,7 @@ runs:
       if: (!inputs.use_cached) || steps.cache.outputs.exists == 'false'
       with:
         push: true
+        platforms: ${{ inputs.platforms }}
         context: ${{ inputs.context }}
         build-args: ${{ inputs.build_args }}
         secret-envs: ${{ inputs.secrets }}
