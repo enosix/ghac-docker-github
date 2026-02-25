@@ -8,6 +8,7 @@ This GitHub Action, named `Docker Push`, is designed to build and push a Docker 
 - `dockerhub_user`: DockerHub Username. Required for both Dockerhub and GCR deployments.
 - `dockerhub_password`: DockerHub Password. Required for both Dockerhub and GCR deployments.
 - `image`: Image Name. Required.
+- `platforms`: The comma seperated cpu architectures to build for. Defaults to `linux/amd64`
 - `context`: Build context directory. Defaults to the repository root.
 - `build_args`: Build Args. Not required.
 - `dockerfile`: Dockerfile. Not required, default is 'Dockerfile'
