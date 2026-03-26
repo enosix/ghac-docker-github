@@ -7,6 +7,12 @@ inputs:
   password:
     description: 'Password or github.token'
     required: false
+  dockerhub_user:
+    description: 'DockerHub Username'
+    required: true
+  dockerhub_password:
+    description: 'DockerHub Password'
+    required: true
   image:
     description: 'Image Name'
     required: true
@@ -98,7 +104,8 @@ runs:
       with:
         command: cves,recommendations
         image: local://${{ steps.meta.outputs.tags[0] }}
-        sarif-file: scout-results.sarif
+        dockerhub-user: ${{ inputs.dockerhub_user }}
+        dockerhub-password: ${{ inputs.dockerhub_password }}
         only-severities: critical,high
         exit-code: ${{ inputs.allow_vulnerabilities != 'true' }}
 
