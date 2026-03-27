@@ -10,12 +10,12 @@ inputs:
   password:
     description: 'Password or github.token'
     required: false
-#  dockerhub_user:
-#    description: 'DockerHub Username'
-#    required: true
-#  dockerhub_password:
-#    description: 'DockerHub Password'
-#    required: true
+  dockerhub_user:
+    description: 'DockerHub Username'
+    required: true
+  dockerhub_password:
+    description: 'DockerHub Password'
+    required: true
   image:
     description: 'Image Name'
     required: true
@@ -41,10 +41,6 @@ inputs:
   version:
     description: 'Version'
     required: false
-  registry:
-    description: 'Registry (ghcr.io, docker.io, *.azurecr.io, or custom registry)'
-    required: true
-    default: ''
   allow_vulnerabilities:
     description: 'Allow Vulnerabilities'
     required: false
@@ -89,6 +85,13 @@ runs:
         echo "version=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}" >> $GITHUB_OUTPUT
         echo "image: ${{steps.meta.outputs.tags[0] }}"
         
+        registry=$(echo "${{ inputs.image }}" | cut -d/ -f1)
+        if [[ "$registry" != *"."* ]]; then
+          registry="docker.io"
+        fi
+        echo "registry=$registry"
+        echo "registry=$registry" >> $GITHUB_ENV
+        
 
     - name: Build image (local load for scanning)
       uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294
@@ -111,25 +114,25 @@ runs:
         verbose-debug: true
         command: cves,recommendations
         image: local://${{ steps.meta.outputs.tags[0] }}
-#        dockerhub-user: ${{ inputs.dockerhub_user }}
-#        dockerhub-password: ${{ inputs.dockerhub_password }}
+        dockerhub-user: ${{ inputs.dockerhub_user }}
+        dockerhub-password: ${{ inputs.dockerhub_password }}
         only-severities: critical,high
         write-comment: ${{ github.event_name == 'pull_request' }}
         github-token: ${{ inputs.github_token }}
         exit-code: ${{ inputs.allow_vulnerabilities != 'true' }}
 
-    - name: Login to ${{ inputs.registry }}
+    - name: Login to ${{ env.registry }}
       uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2
       if: ${{ inputs.username != '' && inputs.password != '' }}
       with:
-        registry: ${{ inputs.registry }}
+        registry: ${{ env.registry }}
         username: ${{ inputs.username }}
         password: ${{ inputs.password }}
 
     - name: ACR Login
-      if: ${{ contains(inputs.registry, '.azurecr.io') }}
+      if: ${{ contains(env.registry, '.azurecr.io') }}
       shell: bash
-      run: az acr login --name ${{ inputs.registry }}
+      run: az acr login --name ${{ env.registry }}
 
     - name: Push image with attestations
       uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294
