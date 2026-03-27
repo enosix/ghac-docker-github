@@ -82,15 +82,17 @@ runs:
       id: image
       shell: bash
       run: |
-        echo "version=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}" >> $GITHUB_OUTPUT
-        echo "image: ${{steps.meta.outputs.tags[0] }}"
+        version="${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}"
+        echo "version=$version" >> $GITHUB_OUTPUT
+        echo "version: $version"
+        echo "image: ${{ inputs.image }}:$version"
         
         registry=$(echo "${{ inputs.image }}" | cut -d/ -f1)
         if [[ "$registry" != *"."* ]]; then
           registry="docker.io"
         fi
-        echo "registry=$registry"
-        echo "registry=$registry" >> $GITHUB_ENV
+        echo "registry: $registry"
+        echo "registry=$registry" >> $GITHUB_OUTPUT
         
 
     - name: Build image (local load for scanning)
@@ -113,7 +115,7 @@ runs:
         debug: true
         verbose-debug: true
         command: cves,recommendations
-        image: local://${{ steps.meta.outputs.tags[0] }}
+        image: local://${{ inputs.image }}:${{ steps.image.outputs.version }}
         dockerhub-user: ${{ inputs.dockerhub_user }}
         dockerhub-password: ${{ inputs.dockerhub_password }}
         only-severities: critical,high
@@ -121,18 +123,18 @@ runs:
         github-token: ${{ inputs.github_token }}
         exit-code: ${{ inputs.allow_vulnerabilities != 'true' }}
 
-    - name: Login to ${{ env.registry }}
+    - name: Login to ${{ steps.image.outputs.registry }}
       uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2
       if: ${{ inputs.username != '' && inputs.password != '' }}
       with:
-        registry: ${{ env.registry }}
+        registry: ${{ steps.image.outputs.registry }}
         username: ${{ inputs.username }}
         password: ${{ inputs.password }}
 
     - name: ACR Login
-      if: ${{ contains(env.registry, '.azurecr.io') }}
+      if: ${{ contains(steps.image.outputs.registry , '.azurecr.io') }}
       shell: bash
-      run: az acr login --name ${{ env.registry }}
+      run: az acr login --name ${{ steps.image.outputs.registry }}
 
     - name: Push image with attestations
       uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294
