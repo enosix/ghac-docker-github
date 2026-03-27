@@ -1,6 +1,9 @@
 name: 'Docker Push'
 description: 'Build and push a docker image'
 inputs:
+  github_token:
+    description: 'GitHub Token'
+    required: false
   username:
     description: 'Username or github.actor'
     required: false
@@ -84,6 +87,9 @@ runs:
       shell: bash
       run: |
         echo "version=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}" >> $GITHUB_OUTPUT
+        echo "image: ${{steps.meta.outputs.tags[0] }}"
+        echo "
+        
 
     - name: Build image (local load for scanning)
       uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294
@@ -102,11 +108,15 @@ runs:
       continue-on-error: ${{ inputs.allow_vulnerabilities == 'true' }}
       uses: docker/scout-action@8910519cee8ac046f3ee99686b0dc6654d5ba1a7
       with:
+        debug: true
+        verbose-debug: true
         command: cves,recommendations
         image: local://${{ steps.meta.outputs.tags[0] }}
         dockerhub-user: ${{ inputs.dockerhub_user }}
         dockerhub-password: ${{ inputs.dockerhub_password }}
         only-severities: critical,high
+        write-comment: ${{ github.event_name == 'pull_request' }}
+        github-token: ${{ inputs.github_token }}
         exit-code: ${{ inputs.allow_vulnerabilities != 'true' }}
 
     - name: Login to ${{ inputs.registry }}

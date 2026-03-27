@@ -10,7 +10,7 @@ on:
         options:
           - 'dev'
           - 'stable'
-          - 'v2'
+          - ''
 
 permissions:
   contents: write
@@ -36,11 +36,15 @@ jobs:
           build_args: |
             TEST=1
           image: ghcr.io/enosix/ghac-docker-github/testing #TODO: maybe make this test image build something useful?
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          dockerhub_user: ${{ env.DOCKERHUB_USERNAME }}
+          dockerhub_password: ${{ env.DOCKERHUB_ACCESS_TOKEN }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
           dockerfile: './test/Dockerfile'
       - name: Create tag
         uses: actions/github-script@v8
+        if: ${{ github.event.inputs.tag != '' }}
         with:
           script: |
             try {
