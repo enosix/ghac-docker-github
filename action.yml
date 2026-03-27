@@ -137,8 +137,11 @@ runs:
     - name: Push image with attestations
       uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294
       with:
-        context: .
         push: true
+        context: ${{ inputs.context }}
+        build-args: ${{ inputs.build_args }}
+        secret-envs: ${{ inputs.secrets }}
+        file: ${{ inputs.dockerfile }}
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
         cache-from: type=gha
