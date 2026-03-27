@@ -10,12 +10,12 @@ inputs:
   password:
     description: 'Password or github.token'
     required: false
-  dockerhub_user:
-    description: 'DockerHub Username'
-    required: true
-  dockerhub_password:
-    description: 'DockerHub Password'
-    required: true
+#  dockerhub_user:
+#    description: 'DockerHub Username'
+#    required: true
+#  dockerhub_password:
+#    description: 'DockerHub Password'
+#    required: true
   image:
     description: 'Image Name'
     required: true
@@ -43,7 +43,7 @@ inputs:
     required: false
   registry:
     description: 'Registry (ghcr.io, docker.io, *.azurecr.io, or custom registry)'
-    required: false
+    required: true
     default: ''
   allow_vulnerabilities:
     description: 'Allow Vulnerabilities'
@@ -111,8 +111,8 @@ runs:
         verbose-debug: true
         command: cves,recommendations
         image: local://${{ steps.meta.outputs.tags[0] }}
-        dockerhub-user: ${{ inputs.dockerhub_user }}
-        dockerhub-password: ${{ inputs.dockerhub_password }}
+#        dockerhub-user: ${{ inputs.dockerhub_user }}
+#        dockerhub-password: ${{ inputs.dockerhub_password }}
         only-severities: critical,high
         write-comment: ${{ github.event_name == 'pull_request' }}
         github-token: ${{ inputs.github_token }}
