@@ -37,7 +37,7 @@ jobs:
             TEST=1
           image: ghcr.io/enosix/ghac-docker-github/testing #TODO: maybe make this test image build something useful?
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          dockerhub_user: ${{ env.DOCKERHUB_USERNAME }}
+          dockerhub_username: ${{ env.DOCKERHUB_USERNAME }}
           dockerhub_password: ${{ env.DOCKERHUB_ACCESS_TOKEN }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}

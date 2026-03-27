@@ -10,7 +10,7 @@ inputs:
   password:
     description: 'Password or github.token'
     required: false
-  dockerhub_user:
+  dockerhub_username:
     description: 'DockerHub Username'
     required: true
   dockerhub_password:
@@ -116,7 +116,7 @@ runs:
         verbose-debug: true
         command: cves,recommendations
         image: local://${{ inputs.image }}:${{ steps.image.outputs.version }}
-        dockerhub-user: ${{ inputs.dockerhub_user }}
+        dockerhub-user: ${{ inputs.dockerhub_username }}
         dockerhub-password: ${{ inputs.dockerhub_password }}
         only-severities: critical,high
         write-comment: ${{ github.event_name == 'pull_request' }}

@@ -7,7 +7,7 @@ This GitHub Action, named `Docker Push`, is designed to build and push a Docker 
 - `github_token`: GitHub Token. Not required. Used for Docker Scout CVE scanning on pull requests.
 - `username`: Username or `github.actor`. Not required.
 - `password`: Password or `github.token`. Not required.
-- `dockerhub_user`: DockerHub Username. Required. Used for Docker Scout authentication.
+- `dockerhub_username`: DockerHub Username. Required. Used for Docker Scout authentication.
 - `dockerhub_password`: DockerHub Password. Required. Used for Docker Scout authentication.
 - `image`: Image Name. Required.
 - `context`: Build context directory. Not required, defaults to the repository root.
@@ -47,7 +47,7 @@ To use this action, include it in your workflow file with the necessary inputs. 
     github_token: ${{ secrets.GITHUB_TOKEN }}
     username: ${{ github.actor }}
     password: ${{ secrets.GITHUB_TOKEN }}
-    dockerhub_user: ${{ secrets.DOCKERHUB_USER }}
+    dockerhub_username: ${{ secrets.DOCKERHUB_USER }}
     dockerhub_password: ${{ secrets.DOCKERHUB_PASSWORD }}
     image: 'your-image-name'
     context: '.'
