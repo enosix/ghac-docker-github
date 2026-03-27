@@ -3,7 +3,7 @@ description: 'Build and push a docker image'
 inputs:
   github_token:
     description: 'GitHub Token'
-    required: false
+    required: true
   username:
     description: 'Username or github.actor'
     required: false
