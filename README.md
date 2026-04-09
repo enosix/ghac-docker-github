@@ -13,7 +13,7 @@ This GitHub Action, named `Docker Push`, is designed to build and push a Docker 
 - `context`: Build context directory. Not required, defaults to the repository root.
 - `build_args`: Build Args. Not required.
 - `secrets`: Secrets passed to the build (format: `MY_SECRET=MY_ENV_VAR`). Not required.
-- `dockerfile`: Dockerfile path. Not required.
+- `dockerfile`: Dockerfile path. Not required, defaults to `Dockerfile`.
 - `tag_latest`: Tag as latest. Not required, defaults to `auto`.
 - `tag_sha`: Tag with the commit SHA. Not required.
 - `version`: Version to tag the image with. Not required, defaults to `edge` tag.
