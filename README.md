@@ -4,7 +4,7 @@ This GitHub Action, named `Docker Push`, is designed to build and push a Docker 
 
 ## Inputs
 
-- `github_token`: GitHub Token. Not required. Used for Docker Scout CVE scanning on pull requests.
+- `github_token`: GitHub Token. Required. Used for Docker Scout CVE scanning on pull requests.
 - `username`: Username or `github.actor`. Not required.
 - `password`: Password or `github.token`. Not required.
 - `dockerhub_username`: DockerHub Username. Required. Used for Docker Scout authentication.
