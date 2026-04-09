@@ -10,7 +10,7 @@ This GitHub Action, named `Docker Push`, is designed to build and push a Docker 
 - `dockerhub_username`: DockerHub Username. Required. Used for Docker Scout authentication.
 - `dockerhub_password`: DockerHub Password. Required. Used for Docker Scout authentication.
 - `image`: Image Name. Required.
-- `context`: Build context directory. Not required, defaults to the repository root.
+- `context`: Build context directory. Not required.
 - `build_args`: Build Args. Not required.
 - `secrets`: Secrets passed to the build (format: `MY_SECRET=MY_ENV_VAR`). Not required.
 - `dockerfile`: Dockerfile path. Not required, defaults to `Dockerfile`.
