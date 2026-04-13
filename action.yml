@@ -3,8 +3,14 @@ description: 'Build and push a docker image'
 inputs:
   github_token:
     description: 'GitHub Token'
+    required: true
+  username:
+    description: 'Username or github.actor'
     required: false
-  dockerhub_user:
+  password:
+    description: 'Password or github.token'
+    required: false
+  dockerhub_username:
     description: 'DockerHub Username'
     required: true
   dockerhub_password:
@@ -28,14 +34,10 @@ inputs:
     description: 'Tag Latest'
     required: false
     default: auto
-  platforms:
-    description: 'The cpu architecture to build'
+  tag_sha:
+    description: 'Tag SHA'
     required: false
-    default: linux/amd64
-  registry:
-    description: 'Registry'
-    required: false
-    default: github # or docker
+    default: ''
   version:
     description: 'Version'
     required: false
@@ -46,23 +48,25 @@ inputs:
   slack_webhook_url:
     description: 'Slack Webhook URL'
     required: false
-  use_cached:
-    description: 'The cached image to use, if the sha exists'
-    required: false
-    default: ''
-  
 
 outputs:
   version:
     description: "Image Version"
     value: ${{ steps.image.outputs.version }}
 
+#
+# Updated sha hashes 2026-04-26
+#
+
 runs:
   using: "composite"
   steps:
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd
+
     - name: Generate Docker Tags
       id: meta
-      uses: docker/metadata-action@v5
+      uses: docker/metadata-action@030e881283bb7a6894de51c315a6bfe6a94e05cf
       with:
         images: ${{ inputs.image }}
         flavor: latest=${{ inputs.tag_latest }}
@@ -70,80 +74,111 @@ runs:
           type=raw,value=${{ inputs.version }},enable=${{ (inputs.version && 'true') || 'false' }}
           type=edge,enable=${{ (inputs.version && 'false') || 'true' }}
           type=ref,event=pr,enable=${{ (inputs.version && 'false') || 'true' }}
+          type=sha,enable=${{ (inputs.tag_sha == 'true' && 'true') || 'false' }}
           type=semver,pattern={{version}}
           type=semver,pattern={{major}}.{{minor}}
+
     - name: Configuration
       id: image
       shell: bash
       run: |
-        echo "version=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}" >> $GITHUB_OUTPUT
-    - name: Login to Github Registry
-      uses: docker/login-action@v3
+        version="${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}"
+        echo "version=$version" >> $GITHUB_OUTPUT
+        echo "version: $version"
+        echo "image: ${{ inputs.image }}:$version"
+        
+        registry=$(echo "${{ inputs.image }}" | cut -d/ -f1)
+        if [[ "$registry" != *"."* ]]; then
+          registry="docker.io"
+        fi
+        echo "registry: $registry"
+        echo "registry=$registry" >> $GITHUB_OUTPUT
+        
+
+    - name: Build image (local load for scanning)
+      uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294
       with:
-        registry: ghcr.io
-        username: ${{ github.actor }}
-        password: ${{ inputs.github_token }}
-    - name: Login to Docker Registry
-      uses: docker/login-action@v3
-      with:
-        username: ${{ inputs.dockerhub_user }}
-        password: ${{ inputs.dockerhub_password }}
-    - name: Set up QEMU
-      uses: docker/setup-qemu-action@v3
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-    - name: Build and push to ${{ inputs.registry == 'docker' && 'DockerHub' || 'GitHub Container Registry' }}
-      uses: docker/build-push-action@v6
-      with:
-        push: true
-        platforms: ${{ inputs.platforms }}
+        load: true
         context: ${{ inputs.context }}
         build-args: ${{ inputs.build_args }}
         secret-envs: ${{ inputs.secrets }}
         file: ${{ inputs.dockerfile }}
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
-        cache-from: ${{ inputs.use_cached && 'type=gha' || '' }}
-        cache-to: ${{ inputs.use_cached && 'type=gha,mode=max' || ''}}
-    - name: Check CVEs
-      id: cves
-      uses: docker/scout-action@v1
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Docker Scout - CVE scan
       continue-on-error: ${{ inputs.allow_vulnerabilities == 'true' }}
+      uses: docker/scout-action@8910519cee8ac046f3ee99686b0dc6654d5ba1a7
       with:
         debug: true
         verbose-debug: true
         command: cves,recommendations
-        image: ${{ steps.meta.outputs.tags[0] }}
-        dockerhub-user: ${{ inputs.dockerhub_user }}
+        image: local://${{ inputs.image }}:${{ steps.image.outputs.version }}
+        dockerhub-user: ${{ inputs.dockerhub_username }}
         dockerhub-password: ${{ inputs.dockerhub_password }}
-        registry-user: ${{ inputs.registry == 'docker' && inputs.dockerhub_user || github.actor }}
-        registry-password: ${{ inputs.registry == 'docker' && inputs.dockerhub_password || inputs.github_token }}
-        to-latest: true
-        ignore-base: true
-        ignore-unchanged: true
-        only-fixed: true
+        only-severities: critical,high
         write-comment: ${{ github.event_name == 'pull_request' }}
         github-token: ${{ inputs.github_token }}
         exit-code: ${{ inputs.allow_vulnerabilities != 'true' }}
-    - name: Send notification to slack
-      if: ${{ failure() && inputs.slack_webhook_url != '' }}
-      uses: slackapi/slack-github-action@v1.24.0
+
+    - name: Login to ${{ steps.image.outputs.registry }}
+      uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2
+      if: ${{ inputs.username != '' && inputs.password != '' }}
       with:
+        registry: ${{ steps.image.outputs.registry }}
+        username: ${{ inputs.username }}
+        password: ${{ inputs.password }}
+
+    - name: ACR Login
+      if: ${{ contains(steps.image.outputs.registry , '.azurecr.io') }}
+      shell: bash
+      run: az acr login --name ${{ steps.image.outputs.registry }}
+
+    - name: Push image with attestations
+      uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294
+      with:
+        push: true
+        context: ${{ inputs.context }}
+        build-args: ${{ inputs.build_args }}
+        secret-envs: ${{ inputs.secrets }}
+        file: ${{ inputs.dockerfile }}
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        sbom: true
+        provenance: mode=max
+        outputs: type=registry
+
+    - name: Send Slack notification
+      uses: slackapi/slack-github-action@af78098f536edbc4de71162a307590698245be95
+      if: failure() && inputs.slack_webhook_url != ''
+      with:
+        webhook: ${{ inputs.slack_webhook_url }}
+        webhook-type: incoming-webhook
         payload: |
-          {
-            "channel": "platform-automated",
-            "username": "Github Actions",
-            "icon_url": "https://avatars.githubusercontent.com/u/9919?s=200&v=4",
-            "attachments": {
-              "fallback": "${{ github.repository }} ${{ github.ref_name }} Failed the CVE check",
-              "color": "danger",
-              "fields": {
-                "title": "${{ github.repository }} ${{ github.ref_name }} has vulnerabilities",
-                "title_link": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}",
-                "value": "Please check the action logs for more details."
-              }
-            }
-          }
-      env:
-        SLACK_WEBHOOK_URL: ${{ inputs.slack_webhook_url }}
-        SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+          text: "${{ github.repository }} ${{ github.ref_name }} failed the CVE check"
+          blocks:
+            - type: header
+              text:
+                type: plain_text
+                text: "CVE check failed"
+                emoji: true
+            - type: section
+              text:
+                type: mrkdwn
+                text: "*Repository:* `${{ github.repository }}`\n*Ref:* `${{ github.ref_name }}`"
+            - type: section
+              text:
+                type: mrkdwn
+                text: ":warning: Vulnerabilities were found. Please review the workflow run for more details."
+            - type: actions
+              elements:
+                - type: button
+                  text:
+                    type: plain_text
+                    text: "View workflow run"
+                    emoji: true
+                  url: "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                  style: danger
