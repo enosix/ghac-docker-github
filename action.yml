@@ -114,7 +114,7 @@ runs:
       with:
         debug: true
         verbose-debug: true
-        command: cves,recommendations
+        command: cves
         image: local://${{ inputs.image }}:${{ steps.image.outputs.version }}
         dockerhub-user: ${{ inputs.dockerhub_username }}
         dockerhub-password: ${{ inputs.dockerhub_password }}
