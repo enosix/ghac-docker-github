@@ -119,6 +119,7 @@ runs:
         dockerhub-user: ${{ inputs.dockerhub_username }}
         dockerhub-password: ${{ inputs.dockerhub_password }}
         only-severities: critical,high
+        only-fixed: true
         write-comment: ${{ github.event_name == 'pull_request' }}
         github-token: ${{ inputs.github_token }}
         exit-code: ${{ inputs.allow_vulnerabilities != 'true' }}
