@@ -21,13 +21,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Get Secrets
-        uses: bitwarden/sm-action@v2.2.0
+        uses: bitwarden/sm-action@27c0c9dcab679d7250dbab91227c85b49ffa5e0f # v3.0.0
         with:
           access_token: ${{ secrets.BW_ACCESS_TOKEN }}
           secrets: |
             d0a9af63-dea5-476f-b35a-b18501152d9a > DOCKERHUB_USERNAME
             bf06dbe4-5b30-4020-b39e-b18501151ace > DOCKERHUB_ACCESS_TOKEN
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
       - name: Test Action
         uses: ./
         with:
@@ -43,7 +43,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
           dockerfile: './test/Dockerfile'
       - name: Create tag
-        uses: actions/github-script@v8
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         if: ${{ github.event.inputs.tag != '' }}
         with:
           script: |

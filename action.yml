@@ -62,41 +62,53 @@ runs:
   using: "composite"
   steps:
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd
+      uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
 
     - name: Generate Docker Tags
       id: meta
-      uses: docker/metadata-action@030e881283bb7a6894de51c315a6bfe6a94e05cf
+      uses: docker/metadata-action@80c7e94dd9b9319bd5eb7a0e0fe9291e23a2a2e9 # v6.1.0
       with:
         images: ${{ inputs.image }}
         flavor: latest=${{ inputs.tag_latest }}
         tags: |
-          type=raw,value=${{ inputs.version }},enable=${{ (inputs.version && 'true') || 'false' }}
-          type=edge,enable=${{ (inputs.version && 'false') || 'true' }}
-          type=ref,event=pr,enable=${{ (inputs.version && 'false') || 'true' }}
-          type=sha,enable=${{ (inputs.tag_sha == 'true' && 'true') || 'false' }}
+          type=raw,value=${{ inputs.version || 'latest' }},enable=${{ inputs.version != '' || inputs.tag_latest == 'true' }}
+          type=edge,enable=${{ inputs.version == '' }}
+          type=ref,event=pr,enable=${{ inputs.version == '' }}
+          type=sha,enable=${{ inputs.tag_sha == 'true' }}
           type=semver,pattern={{version}}
           type=semver,pattern={{major}}.{{minor}}
 
     - name: Configuration
       id: image
       shell: bash
+      env:
+        STEPS_META_OUTPUTS_VERSION: ${{ steps.meta.outputs.version }}
+        INPUTS_IMAGE: ${{ inputs.image }}
       run: |
-        version="${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}"
-        echo "version=$version" >> $GITHUB_OUTPUT
-        echo "version: $version"
-        echo "image: ${{ inputs.image }}:$version"
-        
-        registry=$(echo "${{ inputs.image }}" | cut -d/ -f1)
+        version="${STEPS_META_OUTPUTS_VERSION}"
+        if [[ -z "$version" ]]; then
+          echo "Failed to determine Docker image version from docker/metadata-action"
+          exit 1
+        fi
+
+        image_ref="${INPUTS_IMAGE}:$version"
+
+        echo "version=$version" >> "$GITHUB_OUTPUT"
+        echo "image_ref=$image_ref" >> "$GITHUB_OUTPUT"
+            
+        registry=$(echo "${INPUTS_IMAGE}" | cut -d/ -f1)
         if [[ "$registry" != *"."* ]]; then
           registry="docker.io"
         fi
+        echo "registry=$registry" >> "$GITHUB_OUTPUT"
+    
+        echo "version: $version"
+        echo "image: $image_ref"
         echo "registry: $registry"
-        echo "registry=$registry" >> $GITHUB_OUTPUT
-        
+
 
     - name: Build image (local load for scanning)
-      uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294
+      uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
       with:
         load: true
         context: ${{ inputs.context }}
@@ -110,12 +122,12 @@ runs:
 
     - name: Docker Scout - CVE scan
       continue-on-error: ${{ inputs.allow_vulnerabilities == 'true' }}
-      uses: docker/scout-action@8910519cee8ac046f3ee99686b0dc6654d5ba1a7
+      uses: docker/scout-action@cd72f264beff1cd72735de31148b9d3244a0234a # v1.21.0
       with:
         debug: true
         verbose-debug: true
         command: cves
-        image: local://${{ inputs.image }}:${{ steps.image.outputs.version }}
+        image: local://${{ steps.image.outputs.image_ref }}
         dockerhub-user: ${{ inputs.dockerhub_username }}
         dockerhub-password: ${{ inputs.dockerhub_password }}
         only-severities: critical,high
@@ -125,7 +137,7 @@ runs:
         exit-code: ${{ inputs.allow_vulnerabilities != 'true' }}
 
     - name: Login to ${{ steps.image.outputs.registry }}
-      uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2
+      uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
       if: ${{ inputs.username != '' && inputs.password != '' }}
       with:
         registry: ${{ steps.image.outputs.registry }}
@@ -135,10 +147,12 @@ runs:
     - name: ACR Login
       if: ${{ contains(steps.image.outputs.registry , '.azurecr.io') }}
       shell: bash
-      run: az acr login --name ${{ steps.image.outputs.registry }}
+      env:
+        STEPS_IMAGE_OUTPUTS_REGISTRY: ${{ steps.image.outputs.registry }}
+      run: az acr login --name ${STEPS_IMAGE_OUTPUTS_REGISTRY}
 
     - name: Push image with attestations
-      uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294
+      uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
       with:
         push: true
         context: ${{ inputs.context }}
@@ -153,7 +167,7 @@ runs:
         outputs: type=registry
 
     - name: Send Slack notification
-      uses: slackapi/slack-github-action@af78098f536edbc4de71162a307590698245be95
+      uses: slackapi/slack-github-action@45a88b9581bfab2566dc881e2cd66d334e621e2c # v3.0.3
       if: failure() && inputs.slack_webhook_url != ''
       with:
         webhook: ${{ inputs.slack_webhook_url }}
