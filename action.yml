@@ -71,10 +71,10 @@ runs:
         images: ${{ inputs.image }}
         flavor: latest=${{ inputs.tag_latest }}
         tags: |
-          type=raw,value=${{ inputs.version }},enable=${{ (inputs.version && 'true') || 'false' }}
-          type=edge,enable=${{ (inputs.version && 'false') || 'true' }}
-          type=ref,event=pr,enable=${{ (inputs.version && 'false') || 'true' }}
-          type=sha,enable=${{ (inputs.tag_sha == 'true' && 'true') || 'false' }}
+          type=raw,value=${{ inputs.version || 'latest' }},enable=${{ inputs.version != '' || inputs.tag_latest == 'true' }}
+          type=edge,enable=${{ inputs.version == '' }}
+          type=ref,event=pr,enable=${{ inputs.version == '' }}
+          type=sha,enable=${{ inputs.tag_sha == 'true' }}
           type=semver,pattern={{version}}
           type=semver,pattern={{major}}.{{minor}}
 
