@@ -169,18 +169,26 @@ runs:
     - name: Install SBOM tools
       shell: bash
       run: |
-        # Install sbom-tool
-        dotnet tool install --global Microsoft.Sbom.DotNetTool || true
+# Install sbom-tool
+# Note: .NET global tools install to ~/.dotnet/tools
+if command -v dotnet >/dev/null; then
+  dotnet tool install --global Microsoft.Sbom.DotNetTool || true
+  echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+fi
 
-        # Install SPDXMerge
-        curl -sSL https://github.com/philips-software/SPDXMerge/releases/latest/download/spdx-merge-linux-amd64 \
-          -o /usr/local/bin/spdx-merge
-        chmod +x /usr/local/bin/spdx-merge
+install_dir="${HOME}/.local/bin"
+mkdir -p "$install_dir"
+echo "$install_dir" >> "$GITHUB_PATH"
 
-        # Install cosign
-        curl -sSL https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-amd64 \
-          -o /usr/local/bin/cosign
-        chmod +x /usr/local/bin/cosign
+# Install SPDXMerge
+curl -sSL https://github.com/philips-software/SPDXMerge/releases/latest/download/spdx-merge-linux-amd64 \
+  -o "$install_dir/spdx-merge"
+chmod +x "$install_dir/spdx-merge"
+
+# Install cosign
+curl -sSL https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-amd64 \
+  -o "$install_dir/cosign"
+chmod +x "$install_dir/cosign"
         
     - name: Generate and attest merged SBOM
       shell: bash
