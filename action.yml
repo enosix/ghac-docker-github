@@ -202,10 +202,10 @@ runs:
           -ps "enosix, Inc." \
           -nsb "https://enosix.com"
 
-        # --- Extract OS SBOM from pushed image ---
-        docker buildx imagetools inspect "${{ steps.image.outputs.image_ref }}" \
-          --format '{{ json .SBOM.SPDX }}' > ./extracted/os.spdx.json
-
+# --- Extract OS SBOM from pushed image ---
+mkdir -p ./extracted
+docker buildx imagetools inspect "${{ steps.image.outputs.image_ref }}" \
+  --format '{{ json .SBOM.SPDX }}' > ./extracted/os.spdx.json
         # --- Merge SBOMs ---
         spdx-merge \
           -o merged.spdx.json \
