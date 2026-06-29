@@ -165,6 +165,60 @@ runs:
         sbom: true
         provenance: mode=max
         outputs: type=registry
+    
+    - name: Install SBOM tools
+      shell: bash
+      run: |
+        # Install sbom-tool
+        dotnet tool install --global Microsoft.Sbom.DotNetTool || true
+
+        # Install SPDXMerge
+        curl -sSL https://github.com/philips-software/SPDXMerge/releases/latest/download/spdx-merge-linux-amd64 \
+          -o /usr/local/bin/spdx-merge
+        chmod +x /usr/local/bin/spdx-merge
+
+        # Install cosign
+        curl -sSL https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-amd64 \
+          -o /usr/local/bin/cosign
+        chmod +x /usr/local/bin/cosign
+        
+    - name: Generate and attest merged SBOM
+      shell: bash
+      run: |
+        # --- Check for required tools ---
+        for tool in sbom-tool spdx-merge cosign; do
+          if ! command -v $tool >/dev/null; then
+            echo "$tool not installed, skipping SBOM generation"
+            exit 0
+          fi
+        done
+
+        # --- Generate application SBOM ---
+        sbom-tool generate \
+          -b ./drop \
+          -bc ./src \
+          -pn enosix.Arnold \
+          -pv "${{ steps.image.outputs.version }}" \
+          -ps "enosix, Inc." \
+          -nsb "https://enosix.com"
+
+        # --- Extract OS SBOM from pushed image ---
+        docker buildx imagetools inspect "${{ steps.image.outputs.image_ref }}" \
+          --format '{{ json .SBOM.SPDX }}' > ./extracted/os.spdx.json
+
+        # --- Merge SBOMs ---
+        spdx-merge \
+          -o merged.spdx.json \
+          ./extracted/os.spdx.json \
+          ./drop/spdx.json
+
+        # --- Attest merged SBOM ---
+        cosign attest \
+          --predicate merged.spdx.json \
+          --type spdxjson \
+          "${{ steps.image.outputs.image_ref }}"
+
+        echo "Merged SBOM generated and attested successfully."
 
     - name: Send Slack notification
       uses: slackapi/slack-github-action@45a88b9581bfab2566dc881e2cd66d334e621e2c # v3.0.3
