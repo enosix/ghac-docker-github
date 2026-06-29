@@ -78,6 +78,11 @@ inputs:
     description: "SBOM namespace"
     required: false
     default: ""
+
+  sbom_output_file:
+    description: "Where sbom-tool should write the application SBOM"
+    required: false
+    default: "./drop/spdx.json"
   
 outputs:
   version:
@@ -239,6 +244,7 @@ chmod +x "$install_dir/cosign"
           -pv "${{ inputs.sbom_product_version }}" \
           -ps "${{ inputs.sbom_supplier }}" \
           -nsb "${{ inputs.sbom_namespace }}"
+          -o "${{ inputs.sbom_output_file }}"
 
 # --- Extract OS SBOM from pushed image ---
 mkdir -p ./extracted
@@ -248,7 +254,8 @@ docker buildx imagetools inspect "${{ steps.image.outputs.image_ref }}" \
         spdx-merge \
           -o merged.spdx.json \
           ./extracted/os.spdx.json \
-          ./drop/spdx.json
+          ${{ inputs.sbom_output_file }}
+
 
         # --- Attest merged SBOM ---
         cosign attest \
