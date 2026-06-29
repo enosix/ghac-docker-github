@@ -254,7 +254,7 @@ docker buildx imagetools inspect "${{ steps.image.outputs.image_ref }}" \
         spdx-merge \
           -o merged.spdx.json \
           ./extracted/os.spdx.json \
-          ${{ inputs.sbom_output_file }}
+          "${{ inputs.sbom_output_file }}"
 
 
         # --- Attest merged SBOM ---
