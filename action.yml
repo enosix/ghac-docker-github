@@ -49,6 +49,36 @@ inputs:
     description: 'Slack Webhook URL'
     required: false
 
+  sbom_build_dir:
+    description: "Directory containing built artifacts for SBOM"
+    required: false
+    default: "./drop"
+
+  sbom_source_dir:
+    description: "Directory containing source code for SBOM"
+    required: false
+    default: "./src"
+
+  sbom_product_name:
+    description: "Product name for SBOM"
+    required: false
+    default: ""
+
+  sbom_product_version:
+    description: "Product version for SBOM"
+    required: false
+    default: ""
+
+  sbom_supplier:
+    description: "Supplier name for SBOM"
+    required: false
+    default: ""
+
+  sbom_namespace:
+    description: "SBOM namespace"
+    required: false
+    default: ""
+  
 outputs:
   version:
     description: "Image Version"
@@ -203,12 +233,12 @@ chmod +x "$install_dir/cosign"
 
         # --- Generate application SBOM ---
         sbom-tool generate \
-          -b ./drop \
-          -bc ./src \
-          -pn enosix.Arnold \
-          -pv "${{ steps.image.outputs.version }}" \
-          -ps "enosix, Inc." \
-          -nsb "https://enosix.com"
+          -b "${{ inputs.sbom_build_dir }}" \
+          -bc "${{ inputs.sbom_source_dir }}" \
+          -pn "${{ inputs.sbom_product_name }}" \
+          -pv "${{ inputs.sbom_product_version }}" \
+          -ps "${{ inputs.sbom_supplier }}" \
+          -nsb "${{ inputs.sbom_namespace }}"
 
 # --- Extract OS SBOM from pushed image ---
 mkdir -p ./extracted
