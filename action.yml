@@ -233,13 +233,8 @@ chmod +x "$install_dir/cosign"
           if ! command -v $tool >/dev/null; then
             echo "$tool not installed."
 
-            if [[ "${{ inputs.allow_missing_sbom_tools }}" == "true" ]]; then
-              echo "Skipping SBOM generation because allow_missing_sbom_tools=true"
-              exit 0
-            else
-              echo "SBOM tools missing and allow_missing_sbom_tools=false — failing job."
-              exit 1
-            fi
+            echo "SBOM tools missing — failing job."
+            exit 1
           fi
         done
 
