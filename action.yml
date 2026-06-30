@@ -83,26 +83,25 @@ inputs:
     description: "Where sbom-tool should write the application SBOM"
     required: false
     default: "./drop/spdx.json"
-
-  allow_missing_sbom_tools:
-    description: "Allow skipping SBOM generation if required tools are missing"
-    required: false
-    default: "false"
   
 outputs:
   version:
     description: "Image Version"
     value: ${{ steps.image.outputs.version }}
 
+#
+# Updated sha hashes 2026-04-26
+#
+
 runs:
   using: "composite"
   steps:
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5
+      uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
 
     - name: Generate Docker Tags
       id: meta
-      uses: docker/metadata-action@80c7e94dd9b9319bd5eb7a0e0fe9291e23a2a2e9
+      uses: docker/metadata-action@80c7e94dd9b9319bd5eb7a0e0fe9291e23a2a2e9 # v6.1.0
       with:
         images: ${{ inputs.image }}
         flavor: latest=${{ inputs.tag_latest }}
@@ -142,8 +141,9 @@ runs:
         echo "image: $image_ref"
         echo "registry: $registry"
 
+
     - name: Build image (local load for scanning)
-      uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf
+      uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
       with:
         load: true
         context: ${{ inputs.context }}
@@ -157,7 +157,7 @@ runs:
 
     - name: Docker Scout - CVE scan
       continue-on-error: ${{ inputs.allow_vulnerabilities == 'true' }}
-      uses: docker/scout-action@cd72f264beff1cd72735de31148b9d3244a0234a
+      uses: docker/scout-action@cd72f264beff1cd72735de31148b9d3244a0234a # v1.21.0
       with:
         debug: true
         verbose-debug: true
@@ -172,4 +172,134 @@ runs:
         exit-code: ${{ inputs.allow_vulnerabilities != 'true' }}
 
     - name: Login to ${{ steps.image.outputs.registry }}
-      uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915
+      uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+      if: ${{ inputs.username != '' && inputs.password != '' }}
+      with:
+        registry: ${{ steps.image.outputs.registry }}
+        username: ${{ inputs.username }}
+        password: ${{ inputs.password }}
+
+    - name: ACR Login
+      if: ${{ contains(steps.image.outputs.registry , '.azurecr.io') }}
+      shell: bash
+      env:
+        STEPS_IMAGE_OUTPUTS_REGISTRY: ${{ steps.image.outputs.registry }}
+      run: az acr login --name ${STEPS_IMAGE_OUTPUTS_REGISTRY}
+
+    - name: Push image with attestations
+      uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
+      with:
+        push: true
+        context: ${{ inputs.context }}
+        build-args: ${{ inputs.build_args }}
+        secret-envs: ${{ inputs.secrets }}
+        file: ${{ inputs.dockerfile }}
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        sbom: true
+        provenance: mode=max
+        outputs: type=registry
+    
+    - name: Install SBOM tools
+      shell: bash
+      run: |
+# Install sbom-tool
+# Note: .NET global tools install to ~/.dotnet/tools
+if command -v dotnet >/dev/null; then
+  dotnet tool install --global Microsoft.Sbom.DotNetTool || true
+  echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+fi
+
+install_dir="${HOME}/.local/bin"
+mkdir -p "$install_dir"
+echo "$install_dir" >> "$GITHUB_PATH"
+
+# Install SPDXMerge
+curl -sSL https://github.com/philips-software/SPDXMerge/releases/latest/download/spdx-merge-linux-amd64 \
+  -o "$install_dir/spdx-merge"
+chmod +x "$install_dir/spdx-merge"
+
+# Install cosign
+curl -sSL https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-amd64 \
+  -o "$install_dir/cosign"
+chmod +x "$install_dir/cosign"
+        
+    - name: Generate and attest merged SBOM
+      shell: bash
+      run: |
+        # --- Check for required tools ---
+        for tool in sbom-tool spdx-merge cosign; do
+          if ! command -v $tool >/dev/null; then
+            echo "$tool not installed."
+
+            if [[ "${{ inputs.allow_missing_sbom_tools }}" == "true" ]]; then
+              echo "Skipping SBOM generation because allow_missing_sbom_tools=true"
+              exit 0
+            else
+              echo "SBOM tools missing and allow_missing_sbom_tools=false — failing job."
+              exit 1
+            fi
+          fi
+        done
+
+        # --- Generate application SBOM ---
+        sbom-tool generate \
+          -b "${{ inputs.sbom_build_dir }}" \
+          -bc "${{ inputs.sbom_source_dir }}" \
+          -pn "${{ inputs.sbom_product_name }}" \
+          -pv "${{ inputs.sbom_product_version }}" \
+          -ps "${{ inputs.sbom_supplier }}" \
+          -nsb "${{ inputs.sbom_namespace }}" \
+          -o "${{ inputs.sbom_output_file }}"
+
+# --- Extract OS SBOM from pushed image ---
+mkdir -p ./extracted
+docker buildx imagetools inspect "${{ steps.image.outputs.image_ref }}" \
+  --format '{{ json .SBOM.SPDX }}' > ./extracted/os.spdx.json
+
+        # --- Merge SBOMs ---
+        spdx-merge \
+          -o merged.spdx.json \
+          ./extracted/os.spdx.json \
+          "${{ inputs.sbom_output_file }}"
+
+        # --- Attest merged SBOM ---
+        cosign attest \
+          --predicate merged.spdx.json \
+          --type spdxjson \
+          "${{ steps.image.outputs.image_ref }}"
+
+        echo "Merged SBOM generated and attested successfully."
+
+    - name: Send Slack notification
+      uses: slackapi/slack-github-action@45a88b9581bfab2566dc881e2cd66d334e621e2c # v3.0.3
+      if: failure() && inputs.slack_webhook_url != ''
+      with:
+        webhook: ${{ inputs.slack_webhook_url }}
+        webhook-type: incoming-webhook
+        payload: |
+          text: "${{ github.repository }} ${{ github.ref_name }} failed the CVE check"
+          blocks:
+            - type: header
+              text:
+                type: plain_text
+                text: "CVE check failed"
+                emoji: true
+            - type: section
+              text:
+                type: mrkdwn
+                text: "*Repository:* `${{ github.repository }}`\n*Ref:* `${{ github.ref_name }}`"
+            - type: section
+              text:
+                type: mrkdwn
+                text: ":warning: Vulnerabilities were found. Please review the workflow run for more details."
+            - type: actions
+              elements:
+                - type: button
+                  text:
+                    type: plain_text
+                    text: "View workflow run"
+                    emoji: true
+                  url: "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                  style: danger
