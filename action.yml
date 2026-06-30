@@ -123,4 +123,53 @@ runs:
       run: |
         version="${STEPS_META_OUTPUTS_VERSION}"
         if [[ -z "$version" ]]; then
-          echo "Failed to determine Docker image version from
+          echo "Failed to determine Docker image version from docker/metadata-action"
+          exit 1
+        fi
+
+        image_ref="${INPUTS_IMAGE}:$version"
+
+        echo "version=$version" >> "$GITHUB_OUTPUT"
+        echo "image_ref=$image_ref" >> "$GITHUB_OUTPUT"
+            
+        registry=$(echo "${INPUTS_IMAGE}" | cut -d/ -f1)
+        if [[ "$registry" != *"."* ]]; then
+          registry="docker.io"
+        fi
+        echo "registry=$registry" >> "$GITHUB_OUTPUT"
+    
+        echo "version: $version"
+        echo "image: $image_ref"
+        echo "registry: $registry"
+
+    - name: Build image (local load for scanning)
+      uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf
+      with:
+        load: true
+        context: ${{ inputs.context }}
+        build-args: ${{ inputs.build_args }}
+        secret-envs: ${{ inputs.secrets }}
+        file: ${{ inputs.dockerfile }}
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Docker Scout - CVE scan
+      continue-on-error: ${{ inputs.allow_vulnerabilities == 'true' }}
+      uses: docker/scout-action@cd72f264beff1cd72735de31148b9d3244a0234a
+      with:
+        debug: true
+        verbose-debug: true
+        command: cves
+        image: local://${{ steps.image.outputs.image_ref }}
+        dockerhub-user: ${{ inputs.dockerhub_username }}
+        dockerhub-password: ${{ inputs.dockerhub_password }}
+        only-severities: critical,high
+        only-fixed: true
+        write-comment: ${{ github.event_name == 'pull_request' }}
+        github-token: ${{ inputs.github_token }}
+        exit-code: ${{ inputs.allow_vulnerabilities != 'true' }}
+
+    - name: Login to ${{ steps.image.outputs.registry }}
+      uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915
