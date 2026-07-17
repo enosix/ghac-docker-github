@@ -1,33 +1,49 @@
 name: Test and Tag
 on:
+  pull_request: {}
+  push:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
-      tag:
-        description: 'Tag Name'
+      bump:
+        description: 'The type of semantic version increment to make'
         required: true
-        default: 'dev'
+        default: 'patch'
         type: choice
         options:
-          - 'dev'
-          - 'stable'
-          - ''
+          - major
+          - minor
+          - patch
+          - none
+      dry_run:
+        description: 'If true, only calculate the new version and exit successfully.'
+        required: false
+        default: false
 
 permissions:
   contents: write
   packages: write
+  pull-requests: write
+
+env:
+  bump: ${{ github.event_name == 'pull_request' && 'none' || github.event_name == 'workflow_dispatch' && github.event.inputs.bump || 'patch' }}
+  prerelease_version: ${{ github.event_name == 'pull_request' && format('pr{0}', github.event.number) || '' }}
+  dry_run: ${{ github.event_name == 'pull_request' && 'true' || github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run || 'false' }}
 
 jobs:
   test-and-tag:
     runs-on: ubuntu-latest
     steps:
       - name: Get Secrets
-        uses: bitwarden/sm-action@27c0c9dcab679d7250dbab91227c85b49ffa5e0f # v3.0.0
+        uses: bitwarden/sm-action@1238aae8fc64b212641190a9227c8a734ab1a793 # v3.0.1
         with:
           access_token: ${{ secrets.BW_ACCESS_TOKEN }}
           secrets: |
             d0a9af63-dea5-476f-b35a-b18501152d9a > DOCKERHUB_USERNAME
             bf06dbe4-5b30-4020-b39e-b18501151ace > DOCKERHUB_ACCESS_TOKEN
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - name: Test Action
         uses: ./
         with:
@@ -35,32 +51,19 @@ jobs:
           version: testing
           build_args: |
             TEST=1
-          image: ghcr.io/enosix/ghac-docker-github/testing #TODO: maybe make this test image build something useful?
+          image: ghcr.io/enosix/ghac-docker-github/testing
           github_token: ${{ secrets.GITHUB_TOKEN }}
           dockerhub_username: ${{ env.DOCKERHUB_USERNAME }}
           dockerhub_password: ${{ env.DOCKERHUB_ACCESS_TOKEN }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
           dockerfile: './test/Dockerfile'
-      - name: Create tag
-        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
-        if: ${{ github.event.inputs.tag != '' }}
+
+      - name: Generate Semantic Version
+        uses: enosix/github-action-generate-semver@4ab2e5251fb8c5b9b06eb65b22c0e25daba76311 # v4.0.1
         with:
-          script: |
-            try {
-              await github.rest.git.updateRef({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                ref: 'tags/${{ github.event.inputs.tag }}',
-                sha: context.sha,
-              })
-            } catch (err) {
-              console.log(err)
-            
-              await github.rest.git.createRef({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                ref: 'refs/tags/${{ github.event.inputs.tag }}',
-                sha: context.sha,
-              })
-            }
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          bump: ${{ env.bump }}
+          prerelease_version: ${{ env.prerelease_version }}
+          dry_run: ${{ env.dry_run }}
+          detect_bump: true
