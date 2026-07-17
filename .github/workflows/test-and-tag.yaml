@@ -24,6 +24,7 @@ on:
 permissions:
   contents: write
   packages: write
+  pull-requests: write
 
 env:
   bump: ${{ github.event_name == 'pull_request' && 'none' || github.event_name == 'workflow_dispatch' && github.event.inputs.bump || 'patch' }}
