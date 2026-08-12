@@ -44,6 +44,8 @@ jobs:
             bf06dbe4-5b30-4020-b39e-b18501151ace > DOCKERHUB_ACCESS_TOKEN
 
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
       - name: Test Action
         uses: ./
         with:
@@ -60,10 +62,11 @@ jobs:
           dockerfile: './test/Dockerfile'
 
       - name: Generate Semantic Version
-        uses: enosix/github-action-generate-semver@4ab2e5251fb8c5b9b06eb65b22c0e25daba76311 # v4.0.1
+        uses: enosix/github-action-generate-semver@0db52174578015a9471b9342427b97dc4e031cf2 # v5.0.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           bump: ${{ env.bump }}
           prerelease_version: ${{ env.prerelease_version }}
           dry_run: ${{ env.dry_run }}
-          detect_bump: true
+          create_release: ${{ github.event_name == 'push' }}
+          detect_bump: ${{ github.event_name == 'push' }}
