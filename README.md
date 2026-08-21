@@ -29,12 +29,13 @@ This GitHub Action, named `Docker Push`, is designed to build and push a Docker 
 1. Set up Docker Buildx: Configures Docker Buildx for multi-platform builds.
 2. Generate Docker Tags: Generates Docker tags based on the inputs.
 3. Configuration: Determines the target registry and sets the output image version.
-4. Build image (local load for scanning): Builds the Docker image locally for CVE scanning.
+4. Build image (local load for scanning): Builds the Docker image locally for CVE scanning, importing a scoped cache without exporting another cache copy.
 5. Docker Scout - CVE scan: Scans the image for critical and high severity vulnerabilities.
-6. Login to registry: Logs into the target container registry if `username` and `password` are provided.
-7. ACR Login: Logs into Azure Container Registry if the target registry is an ACR endpoint.
-8. Push image with attestations: Pushes the Docker image with SBOM and provenance attestations.
-9. Send Slack notification: Sends a notification to Slack if a previous step fails and a Slack webhook URL is provided.
+6. Clean up scan data: Removes the local scan image and Scout temporary files after the scan; BuildKit cache is reclaimed before the scan.
+7. Login to registry: Logs into the target container registry if `username` and `password` are provided.
+8. ACR Login: Logs into Azure Container Registry if the target registry is an ACR endpoint.
+9. Push image with attestations: Pushes the Docker image with SBOM and provenance attestations and exports a scoped minimal cache without failing the build if cache export is unavailable.
+10. Send Slack notification: Sends a notification to Slack if a previous step fails and a Slack webhook URL is provided.
 
 ## Usage
 
