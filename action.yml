@@ -106,6 +106,20 @@ runs:
         echo "image: $image_ref"
         echo "registry: $registry"
 
+    - name: Login to ${{ steps.image.outputs.registry }}
+      uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
+      if: ${{ inputs.username != '' && inputs.password != '' }}
+      with:
+        registry: ${{ steps.image.outputs.registry }}
+        username: ${{ inputs.username }}
+        password: ${{ inputs.password }}
+
+    - name: ACR Login
+      if: ${{ contains(steps.image.outputs.registry , '.azurecr.io') && inputs.password == ''}}
+      shell: bash
+      env:
+        STEPS_IMAGE_OUTPUTS_REGISTRY: ${{ steps.image.outputs.registry }}
+      run: az acr login --name ${STEPS_IMAGE_OUTPUTS_REGISTRY}
 
     - name: Build image (local load for scanning)
       uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
@@ -135,21 +149,6 @@ runs:
         write-comment: ${{ github.event_name == 'pull_request' }}
         github-token: ${{ inputs.github_token }}
         exit-code: ${{ inputs.allow_vulnerabilities != 'true' }}
-
-    - name: Login to ${{ steps.image.outputs.registry }}
-      uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
-      if: ${{ inputs.username != '' && inputs.password != '' }}
-      with:
-        registry: ${{ steps.image.outputs.registry }}
-        username: ${{ inputs.username }}
-        password: ${{ inputs.password }}
-
-    - name: ACR Login
-      if: ${{ contains(steps.image.outputs.registry , '.azurecr.io') }}
-      shell: bash
-      env:
-        STEPS_IMAGE_OUTPUTS_REGISTRY: ${{ steps.image.outputs.registry }}
-      run: az acr login --name ${STEPS_IMAGE_OUTPUTS_REGISTRY}
 
     - name: Push image with attestations
       uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
