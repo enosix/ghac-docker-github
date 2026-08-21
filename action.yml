@@ -105,7 +105,23 @@ runs:
         echo "version: $version"
         echo "image: $image_ref"
         echo "registry: $registry"
+        cache_scope="image-$(printf '%s' "$INPUTS_IMAGE" | sha256sum | cut -c1-16)"
+        echo "cache_scope=$cache_scope" >> "$GITHUB_OUTPUT"
 
+    - name: Login to ${{ steps.image.outputs.registry }}
+      uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
+      if: ${{ inputs.username != '' && inputs.password != '' }}
+      with:
+        registry: ${{ steps.image.outputs.registry }}
+        username: ${{ inputs.username }}
+        password: ${{ inputs.password }}
+
+    - name: ACR Login
+      if: ${{ contains(steps.image.outputs.registry , '.azurecr.io') && inputs.password == ''}}
+      shell: bash
+      env:
+        STEPS_IMAGE_OUTPUTS_REGISTRY: ${{ steps.image.outputs.registry }}
+      run: az acr login --name ${STEPS_IMAGE_OUTPUTS_REGISTRY}
 
     - name: Build image (local load for scanning)
       uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
@@ -117,15 +133,21 @@ runs:
         file: ${{ inputs.dockerfile }}
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+        cache-from: type=gha,scope=${{ steps.image.outputs.cache_scope }}
+
+    - name: Report disk usage before scanning
+      shell: bash
+      run: |
+        df -h / "$HOME"
+        docker system df || true
+
+    - name: Reclaim BuildKit cache before scanning
+      shell: bash
+      run: docker buildx prune --all --force
 
     - name: Docker Scout - CVE scan
-      continue-on-error: ${{ inputs.allow_vulnerabilities == 'true' }}
       uses: docker/scout-action@2688993af7bafd6ba8c6a74ec652442be91dd82b # v1.23.1
       with:
-        debug: true
-        verbose-debug: true
         command: cves
         image: local://${{ steps.image.outputs.image_ref }}
         dockerhub-user: ${{ inputs.dockerhub_username }}
@@ -136,20 +158,18 @@ runs:
         github-token: ${{ inputs.github_token }}
         exit-code: ${{ inputs.allow_vulnerabilities != 'true' }}
 
-    - name: Login to ${{ steps.image.outputs.registry }}
-      uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
-      if: ${{ inputs.username != '' && inputs.password != '' }}
-      with:
-        registry: ${{ steps.image.outputs.registry }}
-        username: ${{ inputs.username }}
-        password: ${{ inputs.password }}
-
-    - name: ACR Login
-      if: ${{ contains(steps.image.outputs.registry , '.azurecr.io') }}
+    - name: Remove local scan image
+      if: always()
       shell: bash
       env:
-        STEPS_IMAGE_OUTPUTS_REGISTRY: ${{ steps.image.outputs.registry }}
-      run: az acr login --name ${STEPS_IMAGE_OUTPUTS_REGISTRY}
+        IMAGE_TAGS: ${{ steps.meta.outputs.tags }}
+      run: |
+        while IFS= read -r tag; do
+          if [[ -n "$tag" ]]; then
+            docker image rm --force "$tag" || true
+          fi
+        done <<< "$IMAGE_TAGS"
+        rm -rf /tmp/docker-scout "$HOME/.cache/java-db" "$HOME/.docker/scout"
 
     - name: Push image with attestations
       uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
@@ -161,7 +181,8 @@ runs:
         file: ${{ inputs.dockerfile }}
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
-        cache-from: type=gha
+        cache-from: type=gha,scope=${{ steps.image.outputs.cache_scope }}
+        cache-to: type=gha,scope=${{ steps.image.outputs.cache_scope }},mode=min,ignore-error=true
         sbom: true
         provenance: mode=max
         outputs: type=registry
@@ -173,12 +194,12 @@ runs:
         webhook: ${{ inputs.slack_webhook_url }}
         webhook-type: incoming-webhook
         payload: |
-          text: "${{ github.repository }} ${{ github.ref_name }} failed the CVE check"
+          text: "${{ github.repository }} ${{ github.ref_name }} failed during the Docker build, scan, or push"
           blocks:
             - type: header
               text:
                 type: plain_text
-                text: "CVE check failed"
+                text: "Docker build, scan, or push failed"
                 emoji: true
             - type: section
               text:
@@ -187,7 +208,7 @@ runs:
             - type: section
               text:
                 type: mrkdwn
-                text: ":warning: Vulnerabilities were found. Please review the workflow run for more details."
+                text: ":warning: Please review the workflow run for the failing step and details."
             - type: actions
               elements:
                 - type: button
