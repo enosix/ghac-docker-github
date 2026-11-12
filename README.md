@@ -18,6 +18,7 @@ This GitHub Action, named `Docker Push`, is designed to build and push a Docker 
 - `tag_sha`: Tag with the commit SHA. Not required.
 - `version`: Version to tag the image with. Not required, defaults to `edge` tag.
 - `allow_vulnerabilities`: Push the image even if vulnerabilities are found. Not required, defaults to `false`.
+- `prune_build_cache`: Prune the BuildKit cache before the CVE scan. Not required, defaults to `true`. This frees disk space for the scan, but the push step then rebuilds the image from scratch. Set to `false` when the runner has room for both, so the push reuses the scan build.
 - `slack_webhook_url`: Slack Webhook URL to send notifications on failure. Not required.
 
 ## Outputs
@@ -31,7 +32,7 @@ This GitHub Action, named `Docker Push`, is designed to build and push a Docker 
 3. Configuration: Determines the target registry and sets the output image version.
 4. Build image (local load for scanning): Builds the Docker image locally for CVE scanning, importing a scoped cache without exporting another cache copy.
 5. Docker Scout - CVE scan: Scans the image for critical and high severity vulnerabilities.
-6. Clean up scan data: Removes the local scan image and Scout temporary files after the scan; BuildKit cache is reclaimed before the scan.
+6. Clean up scan data: Removes the local scan image and Scout temporary files after the scan; BuildKit cache is reclaimed before the scan unless `prune_build_cache` is `false`.
 7. Login to registry: Logs into the target container registry if `username` and `password` are provided.
 8. ACR Login: Logs into Azure Container Registry if the target registry is an ACR endpoint.
 9. Push image with attestations: Pushes the Docker image with SBOM and provenance attestations and exports a scoped minimal cache without failing the build if cache export is unavailable.

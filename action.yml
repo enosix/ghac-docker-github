@@ -45,6 +45,10 @@ inputs:
     description: 'Allow Vulnerabilities'
     required: false
     default: 'false'
+  prune_build_cache:
+    description: 'Prune the BuildKit cache before scanning. Frees disk, but the push step then rebuilds the image.'
+    required: false
+    default: 'true'
   slack_webhook_url:
     description: 'Slack Webhook URL'
     required: false
@@ -139,6 +143,7 @@ runs:
         docker system df || true
 
     - name: Reclaim BuildKit cache before scanning
+      if: ${{ inputs.prune_build_cache != 'false' }}
       shell: bash
       run: docker buildx prune --all --force
 
