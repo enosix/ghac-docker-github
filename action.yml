@@ -54,10 +54,7 @@ outputs:
     description: "Image Version"
     value: ${{ steps.image.outputs.version }}
 
-#
 # Updated sha hashes 2026-04-26
-#
-
 runs:
   using: "composite"
   steps:
