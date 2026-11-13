@@ -7,8 +7,8 @@ This GitHub Action, named `Docker Push`, is designed to build and push a Docker 
 - `github_token`: GitHub Token. Required. Used for Docker Scout CVE scanning on pull requests.
 - `username`: Username or `github.actor`. Not required.
 - `password`: Password or `github.token`. Not required.
-- `dockerhub_username`: DockerHub Username. Required. Used for Docker Scout authentication.
-- `dockerhub_password`: DockerHub Password. Required. Used for Docker Scout authentication.
+- `dockerhub_username`: DockerHub Username. Not required. Used for Docker Scout authentication when provided.
+- `dockerhub_password`: DockerHub Password. Not required. Used for Docker Scout authentication when `dockerhub_username` is provided.
 - `image`: Image Name. Required.
 - `context`: Build context directory. Not required.
 - `build_args`: Build Args. Not required.
@@ -31,7 +31,7 @@ This GitHub Action, named `Docker Push`, is designed to build and push a Docker 
 2. Generate Docker Tags: Generates Docker tags based on the inputs.
 3. Configuration: Determines the target registry and sets the output image version.
 4. Build image (local load for scanning): Builds the Docker image locally for CVE scanning, importing a scoped cache without exporting another cache copy.
-5. Docker Scout - CVE scan: Scans the image for critical and high severity vulnerabilities.
+5. Docker Scout - CVE scan: Scans the image for critical and high severity vulnerabilities when `dockerhub_username` is provided.
 6. Clean up scan data: Removes the local scan image and Scout temporary files after the scan; BuildKit cache is reclaimed before the scan unless `prune_build_cache` is `false`.
 7. Login to registry: Logs into the target container registry if `username` and `password` are provided.
 8. ACR Login: Logs into Azure Container Registry if the target registry is an ACR endpoint.

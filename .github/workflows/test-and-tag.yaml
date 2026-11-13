@@ -36,6 +36,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Get Secrets
+        if: ${{ github.actor != 'dependabot[bot]' }}
         uses: bitwarden/sm-action@1238aae8fc64b212641190a9227c8a734ab1a793 # v3.0.1
         with:
           access_token: ${{ secrets.BW_ACCESS_TOKEN }}
@@ -55,8 +56,8 @@ jobs:
             TEST=1
           image: ghcr.io/enosix/ghac-docker-github/testing
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          dockerhub_username: ${{ env.DOCKERHUB_USERNAME }}
-          dockerhub_password: ${{ env.DOCKERHUB_ACCESS_TOKEN }}
+          dockerhub_username: ${{ github.actor != 'dependabot[bot]' && env.DOCKERHUB_USERNAME || '' }}
+          dockerhub_password: ${{ github.actor != 'dependabot[bot]' && env.DOCKERHUB_ACCESS_TOKEN || '' }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
           dockerfile: './test/Dockerfile'
